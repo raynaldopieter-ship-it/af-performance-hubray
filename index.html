@@ -11,21 +11,695 @@
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    fetch('App.jsx')
-      .then(r => r.text())
-      .then(code => {
-        const fixed = code
-          .replace(/import\s+.*?\s+from\s+['"]react['"]/g, '')
-          .replace(/import\s+.*?\s+from\s+['"]react-dom['"]/g, '');
-        const transformed = Babel.transform(fixed, {
-          presets: ['react']
-        }).code;
-        eval(transformed);
-        ReactDOM.createRoot(document.getElementById('root')).render(
-          React.createElement(App)
-        );
-      });
+  <script type="text/babel">
+
+// ================================================================
+// ⚙️  KONFIGURASI — ganti URL ini setelah deploy Apps Script
+// ================================================================
+const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+// Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
+
+// ─── DESIGN TOKENS ──────────────────────────────────────────────
+const C = {
+  bg:"#0a0812", surface:"#110e1a", surface2:"#1a1528",
+  border:"#2d2545", border2:"#3d3460",
+  purple:"#9b6dff", purpleD:"#7c4fe0", purpleL:"#c4a0ff",
+  amethyst:"#b57bee", gold:"#e8c96d", lavender:"#a89cc8",
+  rose:"#e07ca0", teal:"#5ecfb8", cyan:"#5bc8e8",
+  text:"#f0eafa", textMid:"#9d90c0", textDim:"#5a5075",
+};
+
+const clubMeta = {
+  Cikini:{color:"#b57bee",glyph:"C"}, MOI:{color:"#e8c96d",glyph:"M"},
+  Simatupang:{color:"#5ecfb8",glyph:"S"}, "Taman Anggrek":{color:"#e07ca0",glyph:"T"},
+  LWGW:{color:"#9b6dff",glyph:"L"}, "Alam Sutera":{color:"#c4a0ff",glyph:"A"},
+};
+
+const bracketCfg = {
+  A:{color:"#5ecfb8",bg:"#5ecfb815",label:"Excellent"},
+  B:{color:"#e8c96d",bg:"#e8c96d15",label:"Good"},
+  C:{color:"#e07ca0",bg:"#e07ca015",label:"Needs Work"},
+  D:{color:"#ff6b6b",bg:"#ff6b6b15",label:"Critical"},
+};
+
+// ─── FALLBACK DUMMY DATA ────────────────────────────────────────
+const DUMMY = {
+  clubs:{
+    Cikini:{
+      ptSales:{revenue:42500000,sessions:85,target:50000000,pts:[{name:"Andi",revenue:9000000,sessions:18},{name:"Budi",revenue:8500000,sessions:17},{name:"Citra",revenue:7000000,sessions:14},{name:"Dimas",revenue:6500000,sessions:13},{name:"Eka",revenue:5000000,sessions:10},{name:"Fani",revenue:4000000,sessions:8},{name:"Galih",revenue:2500000,sessions:5}]},
+      conduct:{score:78,bracket:"B",violations:2}, assessment:{score:82,passed:5,total:7,lastDate:"05 Apr"},
+      afResult:{sold:12,target:15,revenue:6000000}, afRecovery:{sold:8,target:12,revenue:4000000,penetration:18},
+      penetration:{pct:34,members:120,withPT:41}, newRenewal:{newM:28,renewals:45,tNew:35,tRenew:50},
+    },
+    MOI:{
+      ptSales:{revenue:68000000,sessions:136,target:70000000,pts:[{name:"Hendra",revenue:14000000,sessions:28},{name:"Indra",revenue:12000000,sessions:24},{name:"Joko",revenue:11000000,sessions:22},{name:"Kartika",revenue:10000000,sessions:20},{name:"Lutfi",revenue:9000000,sessions:18},{name:"Maya",revenue:7000000,sessions:14},{name:"Nando",revenue:5000000,sessions:10}]},
+      conduct:{score:91,bracket:"A",violations:0}, assessment:{score:89,passed:7,total:7,lastDate:"07 Apr"},
+      afResult:{sold:18,target:20,revenue:9000000}, afRecovery:{sold:14,target:18,revenue:7000000,penetration:28},
+      penetration:{pct:42,members:200,withPT:84}, newRenewal:{newM:45,renewals:72,tNew:50,tRenew:70},
+    },
+    Simatupang:{
+      ptSales:{revenue:31000000,sessions:62,target:45000000,pts:[{name:"Oky",revenue:6000000,sessions:12},{name:"Prima",revenue:5500000,sessions:11},{name:"Qori",revenue:5000000,sessions:10},{name:"Rafi",revenue:4500000,sessions:9},{name:"Sinta",revenue:4000000,sessions:8},{name:"Toni",revenue:3500000,sessions:7},{name:"Umar",revenue:2500000,sessions:5}]},
+      conduct:{score:65,bracket:"C",violations:4}, assessment:{score:71,passed:4,total:7,lastDate:"03 Apr"},
+      afResult:{sold:8,target:12,revenue:4000000}, afRecovery:{sold:5,target:10,revenue:2500000,penetration:12},
+      penetration:{pct:27,members:95,withPT:26}, newRenewal:{newM:18,renewals:30,tNew:25,tRenew:40},
+    },
+    "Taman Anggrek":{
+      ptSales:{revenue:55000000,sessions:110,target:60000000,pts:[{name:"Vina",revenue:11000000,sessions:22},{name:"Wawan",revenue:10000000,sessions:20},{name:"Xena",revenue:9000000,sessions:18},{name:"Yudi",revenue:8500000,sessions:17},{name:"Zara",revenue:7000000,sessions:14},{name:"Aldi",revenue:5500000,sessions:11},{name:"Bella",revenue:4000000,sessions:8}]},
+      conduct:{score:85,bracket:"A",violations:1}, assessment:{score:87,passed:6,total:7,lastDate:"08 Apr"},
+      afResult:{sold:14,target:15,revenue:7000000}, afRecovery:{sold:10,target:14,revenue:5000000,penetration:22},
+      penetration:{pct:38,members:160,withPT:61}, newRenewal:{newM:36,renewals:58,tNew:40,tRenew:60},
+    },
+    LWGW:{
+      ptSales:{revenue:28000000,sessions:56,target:40000000,pts:[{name:"Chandra",revenue:6000000,sessions:12},{name:"Dewi",revenue:5500000,sessions:11},{name:"Edo",revenue:4500000,sessions:9},{name:"Fira",revenue:4000000,sessions:8},{name:"Gilang",revenue:3500000,sessions:7},{name:"Hani",revenue:2800000,sessions:6},{name:"Ivan",revenue:1700000,sessions:3}]},
+      conduct:{score:73,bracket:"B",violations:3}, assessment:{score:76,passed:5,total:7,lastDate:"04 Apr"},
+      afResult:{sold:9,target:12,revenue:4500000}, afRecovery:{sold:6,target:10,revenue:3000000,penetration:14},
+      penetration:{pct:30,members:110,withPT:33}, newRenewal:{newM:22,renewals:35,tNew:30,tRenew:40},
+    },
+    "Alam Sutera":{
+      ptSales:{revenue:38000000,sessions:76,target:45000000,pts:[{name:"Joni",revenue:8000000,sessions:16},{name:"Kiki",revenue:7500000,sessions:15},{name:"Lena",revenue:6500000,sessions:13},{name:"Miko",revenue:6000000,sessions:12},{name:"Nita",revenue:5000000,sessions:10},{name:"Omar",revenue:3000000,sessions:6},{name:"Putra",revenue:2000000,sessions:4}]},
+      conduct:{score:80,bracket:"B",violations:2}, assessment:{score:83,passed:6,total:7,lastDate:"06 Apr"},
+      afResult:{sold:11,target:14,revenue:5500000}, afRecovery:{sold:7,target:12,revenue:3500000,penetration:16},
+      penetration:{pct:33,members:130,withPT:43}, newRenewal:{newM:25,renewals:42,tNew:30,tRenew:45},
+    },
+  },
+};
+
+// Build dummy agg
+const buildAgg = (clubs) => {
+  const keys = Object.keys(clubs);
+  const sections = ["ptSales","conduct","assessment","afResult","afRecovery","penetration","newRenewal"];
+  const agg = {};
+  sections.forEach(sec => {
+    const first = clubs[keys[0]][sec];
+    const result = {};
+    Object.keys(first).forEach(k => {
+      if (typeof first[k]==="number") result[k] = keys.reduce((s,c)=>s+(clubs[c][sec][k]||0),0);
+      else if (Array.isArray(first[k])) result[k] = keys.flatMap(c=>(clubs[c][sec][k]||[]).map(i=>({...i,club:c})));
+      else result[k] = first[k];
+    });
+    if (["conduct","assessment"].includes(sec) && result.score) result.score = Math.round(result.score/keys.length);
+    if (sec==="penetration" && result.pct) result.pct = Math.round(result.pct/keys.length);
+    if (sec==="afRecovery" && result.penetration) result.penetration = Math.round(result.penetration/keys.length);
+    agg[sec] = result;
+  });
+  agg.conduct.bracket = agg.conduct.score>=85?"A":agg.conduct.score>=70?"B":agg.conduct.score>=55?"C":"D";
+  return agg;
+};
+DUMMY.agg = buildAgg(DUMMY.clubs);
+
+// ─── HELPERS ────────────────────────────────────────────────────
+const fmt   = v=>v>=1000000?`${(v/1000000).toFixed(1)}M`:v>=1000?`${(v/1000).toFixed(0)}K`:`${v}`;
+const fmtRp = v=>`Rp ${fmt(v)}`;
+const pct   = (a,b)=>Math.min(Math.round((a/b)*100),100);
+
+// ─── MICRO UI ───────────────────────────────────────────────────
+const Bar = ({val,max,color=C.purple,h=5})=>{
+  const [w,setW]=useState(0);
+  useEffect(()=>{const t=setTimeout(()=>setW(pct(val,max)),130);return()=>clearTimeout(t);},[val,max]);
+  return <div style={{background:C.border,borderRadius:99,height:h,overflow:"hidden"}}><div style={{width:`${w}%`,height:"100%",background:color,borderRadius:99,transition:"width 0.9s cubic-bezier(.4,0,.2,1)",boxShadow:`0 0 8px ${color}55`}}/></div>;
+};
+
+const Ring = ({val,max,color=C.purple,size=72,thick=7})=>{
+  const r=size/2-thick; const circ=2*Math.PI*r;
+  const [dash,setDash]=useState(0);
+  useEffect(()=>{const t=setTimeout(()=>setDash(pct(val,max)/100*circ),160);return()=>clearTimeout(t);},[val,max,circ]);
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.border} strokeWidth={thick}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={thick}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}
+        style={{transition:"stroke-dasharray 1s cubic-bezier(.4,0,.2,1)",filter:`drop-shadow(0 0 5px ${color})`}}/>
+      <text x={size/2} y={size/2+1} textAnchor="middle" dominantBaseline="middle" fill={C.text} fontSize={size*0.18} fontWeight="700" fontFamily="'DM Mono',monospace">{pct(val,max)}%</text>
+    </svg>
+  );
+};
+
+const Card = ({children,style={},glow})=>(
+  <div style={{background:`linear-gradient(145deg,${C.surface},${C.surface2})`,border:`1px solid ${glow?glow+"45":C.border}`,borderRadius:18,padding:"20px 22px",position:"relative",overflow:"hidden",boxShadow:glow?`0 0 32px ${glow}12,inset 0 1px 0 ${glow}18`:`0 4px 24px #00000040`,...style}}>
+    {glow&&<div style={{position:"absolute",top:0,left:"15%",right:"15%",height:1,background:`linear-gradient(90deg,transparent,${glow}70,transparent)`}}/>}
+    {children}
+  </div>
+);
+
+const Lbl  = ({c})=><div style={{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:2.5,fontFamily:"'DM Mono',monospace",marginBottom:4}}>{c}</div>;
+const Big  = ({c="white",children})=><div style={{fontSize:32,fontWeight:800,color:c,fontFamily:"'DM Mono',monospace",lineHeight:1.1,letterSpacing:-1}}>{children}</div>;
+const TRow = ({label,val,accent})=>(
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${C.border}`}}>
+    <span style={{fontSize:11,color:C.textMid}}>{label}</span>
+    <span style={{fontSize:13,fontWeight:700,color:accent||C.text,fontFamily:"'DM Mono',monospace"}}>{val}</span>
+  </div>
+);
+const Chip = ({label,color})=>(
+  <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:99,background:color+"20",color,border:`1px solid ${color}40`,fontFamily:"'DM Mono',monospace",letterSpacing:0.5}}>{label}</span>
+);
+
+const TABS=[
+  {id:"overview", label:"Overview",    icon:"◈"},
+  {id:"sales",    label:"PT Sales",    icon:"◆"},
+  {id:"conduct",  label:"Conduct",     icon:"◉"},
+  {id:"recovery", label:"AF Recovery", icon:"◎"},
+  {id:"members",  label:"Members",     icon:"◍"},
+];
+
+// ═══════════════════════════════════════════════════════════════
+export default function App() {
+  const [club,    setClub]    = useState("All Clubs");
+  const [tab,     setTab]     = useState("overview");
+  const [data,    setData]    = useState(DUMMY);
+  const [loading, setLoading] = useState(false);
+  const [source,  setSource]  = useState("demo"); // "demo" | "live"
+  const [lastSync,setLastSync]= useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(()=>{const t=setTimeout(()=>setMounted(true),50);return()=>clearTimeout(t);},[]);
+
+  const fetchFromSheets = useCallback(async()=>{
+    if (APPS_SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") return;
+    setLoading(true);
+    try {
+      const res  = await fetch(`${APPS_SCRIPT_URL}?action=all`);
+      const json = await res.json();
+      if (json.clubs && json.agg) {
+        setData(json);
+        setSource("live");
+        setLastSync(new Date().toLocaleTimeString("id-ID"));
+      }
+    } catch(e) {
+      console.error("Sheets fetch failed, using demo data", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Auto-fetch on load + every 5 minutes
+  useEffect(()=>{
+    fetchFromSheets();
+    const interval = setInterval(fetchFromSheets, 5*60*1000);
+    return ()=>clearInterval(interval);
+  },[fetchFromSheets]);
+
+  const d     = club==="All Clubs" ? data.agg : data.clubs[club];
+  const isAll = club==="All Clubs";
+  const accent = isAll ? C.purple : clubMeta[club]?.color || C.purple;
+
+  if (!d) return <div style={{background:C.bg,color:C.text,height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Outfit',sans-serif"}}>Loading...</div>;
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Outfit',sans-serif",opacity:mounted?1:0,transition:"opacity 0.5s"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+      {/* Ambient glows */}
+      <div style={{position:"fixed",top:"-15%",left:"25%",width:600,height:600,background:`radial-gradient(circle,${C.purpleD}1a 0%,transparent 65%)`,pointerEvents:"none",zIndex:0}}/>
+      <div style={{position:"fixed",bottom:"5%",right:"-5%",width:450,height:450,background:`radial-gradient(circle,${C.amethyst}0e 0%,transparent 65%)`,pointerEvents:"none",zIndex:0}}/>
+
+      {/* ══ HEADER ══ */}
+      <div style={{position:"sticky",top:0,zIndex:50,background:`${C.bg}ec`,backdropFilter:"blur(24px)",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{maxWidth:980,margin:"0 auto",padding:"16px 20px 0"}}>
+
+          {/* Top bar */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:38,height:38,borderRadius:10,background:`linear-gradient(135deg,${C.purpleD},${C.amethyst})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${C.purple}55`}}>💪</div>
+              <div>
+                <div style={{fontSize:17,fontWeight:800,letterSpacing:-0.5,background:`linear-gradient(90deg,${C.text},${C.purpleL})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>AF Performance Hub</div>
+                <div style={{fontSize:9,color:C.textDim,letterSpacing:2.5,textTransform:"uppercase"}}>Anytime Fitness Indonesia · Area Dashboard</div>
+              </div>
+            </div>
+
+            {/* Sync status */}
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.gold,fontFamily:"'DM Mono',monospace"}}>APRIL 2025</div>
+                <div style={{fontSize:9,color:C.textDim,fontFamily:"'DM Mono',monospace"}}>
+                  {source==="live"
+                    ? <span style={{color:C.teal}}>● LIVE{lastSync?` · ${lastSync}`:""}</span>
+                    : <span style={{color:C.gold}}>● DEMO DATA</span>}
+                </div>
+              </div>
+              <button onClick={fetchFromSheets} disabled={loading} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.border2}`,background:loading?C.surface:C.surface2,color:loading?C.textDim:C.purpleL,cursor:loading?"wait":"pointer",fontSize:10,fontFamily:"'DM Mono',monospace",transition:"all 0.2s"}}>
+                {loading?"⟳ Sync...":"⟳ Refresh"}
+              </button>
+            </div>
+          </div>
+
+          {/* Club pills */}
+          <div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}}>
+            {["All Clubs",...Object.keys(clubMeta)].map(c=>{
+              const col=c==="All Clubs"?C.purple:clubMeta[c].color; const active=club===c;
+              return(
+                <button key={c} onClick={()=>setClub(c)} style={{padding:"5px 14px",borderRadius:99,cursor:"pointer",whiteSpace:"nowrap",border:`1px solid ${active?col:C.border}`,background:active?`${col}20`:"transparent",color:active?col:C.textDim,fontSize:10,fontWeight:active?700:500,fontFamily:"'DM Mono',monospace",letterSpacing:0.8,transition:"all 0.2s",boxShadow:active?`0 0 14px ${col}35`:"none"}}>
+                  {c==="All Clubs"?"◉ ALL CLUBS":c.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:"flex",marginTop:14,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
+            {TABS.map(t=>{
+              const active=tab===t.id;
+              return(
+                <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 16px",border:"none",background:"transparent",cursor:"pointer",color:active?C.text:C.textDim,fontSize:11,fontWeight:active?700:400,borderBottom:active?`2px solid ${accent}`:"2px solid transparent",transition:"all 0.2s",letterSpacing:0.5,whiteSpace:"nowrap",textShadow:active?`0 0 20px ${accent}`:"none"}}>
+                  <span style={{marginRight:4,fontSize:9}}>{t.icon}</span>{t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ BODY ══ */}
+      <div style={{maxWidth:980,margin:"0 auto",padding:"24px 20px 60px",position:"relative",zIndex:1}}>
+
+        {/* ── OVERVIEW ── */}
+        {tab==="overview"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* Row 1 KPIs */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+              <Card glow={C.amethyst}>
+                <Lbl c="PT Sales Revenue"/>
+                <Big c={C.amethyst}>{fmtRp(d.ptSales.revenue)}</Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>of {fmtRp(d.ptSales.target)}</div>
+                <Bar val={d.ptSales.revenue} max={d.ptSales.target} color={C.amethyst}/>
+                <div style={{fontSize:10,color:C.amethyst,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{pct(d.ptSales.revenue,d.ptSales.target)}% achieved</div>
+              </Card>
+              <Card glow={C.gold}>
+                <Lbl c="AF Result"/>
+                <Big c={C.gold}>{d.afResult.sold}<span style={{fontSize:16,color:C.textDim}}>/{d.afResult.target}</span></Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>{fmtRp(d.afResult.revenue)} · 2 sesi/paket</div>
+                <Bar val={d.afResult.sold} max={d.afResult.target} color={C.gold}/>
+                <div style={{fontSize:10,color:C.gold,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{pct(d.afResult.sold,d.afResult.target)}% of target</div>
+              </Card>
+              <Card glow={C.teal}>
+                <Lbl c="PT Penetration"/>
+                <Big c={C.teal}>{d.penetration.pct}%</Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>{d.penetration.withPT}/{d.penetration.members} · target 40%</div>
+                <Bar val={d.penetration.pct} max={40} color={C.teal}/>
+                <div style={{fontSize:10,color:d.penetration.pct>=40?C.teal:C.gold,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{d.penetration.pct>=40?"✓ Target reached":`${40-d.penetration.pct}% gap to target`}</div>
+              </Card>
+            </div>
+
+            {/* Row 2 */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+              <Card glow={C.cyan}>
+                <Lbl c="AF Recovery"/>
+                <Big c={C.cyan}>{d.afRecovery.sold}<span style={{fontSize:16,color:C.textDim}}>/{d.afRecovery.target}</span></Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>{fmtRp(d.afRecovery.revenue)} · penetrasi {d.afRecovery.penetration}%</div>
+                <Bar val={d.afRecovery.sold} max={d.afRecovery.target} color={C.cyan}/>
+                <div style={{fontSize:10,color:C.cyan,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{pct(d.afRecovery.sold,d.afRecovery.target)}% of target</div>
+              </Card>
+              <Card glow={bracketCfg[d.conduct.bracket]?.color}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <Lbl c="PT Conduct"/>
+                    <div style={{fontSize:40,fontWeight:900,fontFamily:"'DM Mono',monospace",lineHeight:1,color:bracketCfg[d.conduct.bracket]?.color,textShadow:`0 0 24px ${bracketCfg[d.conduct.bracket]?.color}80`}}>{d.conduct.score}</div>
+                    <div style={{fontSize:10,color:C.textDim,marginTop:4}}>{d.conduct.violations} violation{d.conduct.violations!==1?"s":""}</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{width:48,height:48,borderRadius:10,background:bracketCfg[d.conduct.bracket]?.bg,border:`2px solid ${bracketCfg[d.conduct.bracket]?.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:bracketCfg[d.conduct.bracket]?.color,fontFamily:"'DM Mono',monospace",boxShadow:`0 0 18px ${bracketCfg[d.conduct.bracket]?.color}50`}}>{d.conduct.bracket}</div>
+                    <div style={{fontSize:8,color:C.textDim,marginTop:3}}>BRACKET</div>
+                  </div>
+                </div>
+                <div style={{marginTop:10}}><Bar val={d.conduct.score} max={100} color={bracketCfg[d.conduct.bracket]?.color}/></div>
+              </Card>
+              <Card glow={C.lavender}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <Lbl c="Assessment PT"/>
+                    <div style={{fontSize:40,fontWeight:900,fontFamily:"'DM Mono',monospace",lineHeight:1,color:C.lavender}}>{d.assessment.score}</div>
+                    <div style={{fontSize:10,color:C.textDim,marginTop:4}}>{d.assessment.passed}/{d.assessment.total} passed</div>
+                  </div>
+                  <Ring val={d.assessment.score} max={100} color={C.lavender} size={64}/>
+                </div>
+                <div style={{marginTop:10}}><Bar val={d.assessment.score} max={100} color={C.lavender}/></div>
+              </Card>
+            </div>
+
+            {/* New & Renewal */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <Card>
+                <Lbl c="New Members"/>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                  <Big c={C.rose}>{d.newRenewal.newM}</Big>
+                  <span style={{fontSize:11,color:C.textDim,fontFamily:"'DM Mono',monospace",marginBottom:4}}>/ {d.newRenewal.tNew} target</span>
+                </div>
+                <div style={{marginTop:8}}><Bar val={d.newRenewal.newM} max={d.newRenewal.tNew} color={C.rose}/></div>
+                <div style={{fontSize:10,color:C.rose,marginTop:5,fontFamily:"'DM Mono',monospace"}}>{pct(d.newRenewal.newM,d.newRenewal.tNew)}% achieved</div>
+              </Card>
+              <Card>
+                <Lbl c="Renewals"/>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                  <Big c={C.purpleL}>{d.newRenewal.renewals}</Big>
+                  <span style={{fontSize:11,color:C.textDim,fontFamily:"'DM Mono',monospace",marginBottom:4}}>/ {d.newRenewal.tRenew} target</span>
+                </div>
+                <div style={{marginTop:8}}><Bar val={d.newRenewal.renewals} max={d.newRenewal.tRenew} color={C.purpleL}/></div>
+                <div style={{fontSize:10,color:C.purpleL,marginTop:5,fontFamily:"'DM Mono',monospace"}}>{pct(d.newRenewal.renewals,d.newRenewal.tRenew)}% achieved</div>
+              </Card>
+            </div>
+
+            {/* Club snapshot */}
+            {isAll&&(
+              <div>
+                <div style={{fontSize:9,color:C.textDim,letterSpacing:2.5,textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:12}}>Club Snapshot · Tap to drill down</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                  {Object.entries(data.clubs).map(([name,cd])=>{
+                    const col=clubMeta[name]?.color||C.purple; const bc=bracketCfg[cd.conduct?.bracket||"B"];
+                    return(
+                      <Card key={name} glow={col} style={{cursor:"pointer"}}>
+                        <div onClick={()=>setClub(name)}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <div style={{width:28,height:28,borderRadius:8,background:`${col}20`,border:`1px solid ${col}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:col,fontFamily:"'DM Mono',monospace"}}>{clubMeta[name]?.glyph}</div>
+                              <span style={{fontSize:13,fontWeight:700,color:col}}>{name}</span>
+                            </div>
+                            <Chip label={`Bracket ${cd.conduct?.bracket}`} color={bc.color}/>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:10}}>
+                            {[
+                              {l:"Sales",    v:fmtRp(cd.ptSales?.revenue||0)},
+                              {l:"AF Result",v:`${cd.afResult?.sold||0}/${cd.afResult?.target||0}`},
+                              {l:"Recovery", v:`${cd.afRecovery?.sold||0}/${cd.afRecovery?.target||0}`},
+                              {l:"Penetrasi",v:`${cd.penetration?.pct||0}%`},
+                            ].map(k=>(
+                              <div key={k.l} style={{background:C.bg,borderRadius:8,padding:"6px 8px"}}>
+                                <div style={{fontSize:7,color:C.textDim,letterSpacing:1}}>{k.l}</div>
+                                <div style={{fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace",marginTop:2}}>{k.v}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <Bar val={cd.ptSales?.revenue||0} max={cd.ptSales?.target||1} color={col} h={4}/>
+                          <div style={{fontSize:9,color:C.textDim,marginTop:5,fontFamily:"'DM Mono',monospace"}}>Sales {pct(cd.ptSales?.revenue||0,cd.ptSales?.target||1)}% · tap to detail →</div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PT SALES ── */}
+        {tab==="sales"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <Card glow={C.amethyst}>
+              <Lbl c={`Monthly PT Sales · ${isAll?"All 6 Clubs":club}`}/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,margin:"12px 0"}}>
+                {[{l:"Revenue",v:fmtRp(d.ptSales.revenue),c:C.amethyst},{l:"Target",v:fmtRp(d.ptSales.target),c:C.text},{l:"Sessions",v:`${d.ptSales.sessions}`,c:C.purpleL}].map(k=>(
+                  <div key={k.l}><Lbl c={k.l}/><div style={{fontSize:26,fontWeight:800,fontFamily:"'DM Mono',monospace",color:k.c}}>{k.v}</div></div>
+                ))}
+              </div>
+              <Bar val={d.ptSales.revenue} max={d.ptSales.target} color={C.amethyst} h={8}/>
+              <div style={{fontSize:11,color:C.amethyst,marginTop:8,fontFamily:"'DM Mono',monospace"}}>{pct(d.ptSales.revenue,d.ptSales.target)}% of monthly target</div>
+            </Card>
+            <Card>
+              <Lbl c="PT Leaderboard — Ranked by Revenue"/>
+              <div style={{marginTop:12}}>
+                {[...d.ptSales.pts].sort((a,b)=>b.revenue-a.revenue).map((pt,i)=>{
+                  const maxRev=[...d.ptSales.pts].reduce((m,p)=>Math.max(m,p.revenue),0);
+                  const col=isAll?(clubMeta[pt.club]?.color||C.purple):C.amethyst;
+                  const medals=["🥇","🥈","🥉"];
+                  return(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                      <div style={{width:26,height:26,borderRadius:7,background:i<3?`${col}20`:C.surface2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:i<3?13:10,fontWeight:700,color:i<3?col:C.textDim,fontFamily:"'DM Mono',monospace",flexShrink:0}}>{medals[i]||`#${i+1}`}</div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:13,fontWeight:600}}>{pt.name}</span>
+                            {pt.club&&<Chip label={pt.club} color={clubMeta[pt.club]?.color||C.purple}/>}
+                          </div>
+                          <span style={{fontSize:13,fontWeight:800,fontFamily:"'DM Mono',monospace",color:col}}>{fmtRp(pt.revenue)}</span>
+                        </div>
+                        <div style={{marginTop:4}}><Bar val={pt.revenue} max={maxRev} color={col} h={3}/></div>
+                        <div style={{fontSize:9,color:C.textDim,marginTop:2,fontFamily:"'DM Mono',monospace"}}>{pt.sessions} sessions</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+            {isAll&&(
+              <Card>
+                <Lbl c="Sales by Club"/>
+                <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:12}}>
+                  {Object.entries(data.clubs).sort((a,b)=>b[1].ptSales.revenue-a[1].ptSales.revenue).map(([name,cd])=>{
+                    const col=clubMeta[name]?.color||C.purple; const p=pct(cd.ptSales.revenue,cd.ptSales.target);
+                    return(
+                      <div key={name}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                          <span style={{fontSize:12,fontWeight:600,color:col}}>{name}</span>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            <span style={{fontSize:12,fontFamily:"'DM Mono',monospace"}}>{fmtRp(cd.ptSales.revenue)}</span>
+                            <Chip label={`${p}%`} color={p>=90?C.teal:p>=70?C.gold:C.rose}/>
+                          </div>
+                        </div>
+                        <Bar val={cd.ptSales.revenue} max={cd.ptSales.target} color={col} h={5}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ── CONDUCT ── */}
+        {tab==="conduct"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <Card glow={bracketCfg[d.conduct.bracket]?.color}>
+                <Lbl c="PT Conduct Score"/>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginTop:8}}>
+                  <div>
+                    <div style={{fontSize:52,fontWeight:900,fontFamily:"'DM Mono',monospace",lineHeight:1,color:bracketCfg[d.conduct.bracket]?.color,textShadow:`0 0 30px ${bracketCfg[d.conduct.bracket]?.color}`}}>{d.conduct.score}</div>
+                    <div style={{fontSize:10,color:C.textDim,marginTop:4}}>out of 100</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{width:64,height:64,borderRadius:14,background:bracketCfg[d.conduct.bracket]?.bg,border:`2px solid ${bracketCfg[d.conduct.bracket]?.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,fontWeight:900,color:bracketCfg[d.conduct.bracket]?.color,fontFamily:"'DM Mono',monospace",boxShadow:`0 0 24px ${bracketCfg[d.conduct.bracket]?.color}50`}}>{d.conduct.bracket}</div>
+                    <div style={{fontSize:8,color:C.textDim,marginTop:4}}>{bracketCfg[d.conduct.bracket]?.label}</div>
+                  </div>
+                </div>
+                <div style={{margin:"12px 0"}}><Bar val={d.conduct.score} max={100} color={bracketCfg[d.conduct.bracket]?.color} h={7}/></div>
+                <TRow label="Total Violations" val={d.conduct.violations} accent={d.conduct.violations>2?C.rose:C.teal}/>
+              </Card>
+              <Card glow={C.gold}>
+                <Lbl c="AF Result (Paid Assessment)"/>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginTop:8}}>
+                  <div>
+                    <div style={{fontSize:52,fontWeight:900,fontFamily:"'DM Mono',monospace",lineHeight:1,color:C.gold}}>{d.afResult.sold}</div>
+                    <div style={{fontSize:10,color:C.textDim,marginTop:4}}>/ {d.afResult.target} target</div>
+                    <div style={{fontSize:10,color:C.gold,marginTop:2,fontFamily:"'DM Mono',monospace"}}>{d.afResult.sold*2} sessions total</div>
+                  </div>
+                  <Ring val={d.afResult.sold} max={d.afResult.target} color={C.gold} size={72}/>
+                </div>
+                <div style={{margin:"12px 0"}}><Bar val={d.afResult.sold} max={d.afResult.target} color={C.gold} h={7}/></div>
+                <TRow label="Revenue" val={fmtRp(d.afResult.revenue)} accent={C.gold}/>
+              </Card>
+            </div>
+            <Card glow={C.lavender}>
+              <Lbl c="Assessment Personal Trainer"/>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr",gap:20,alignItems:"center",marginTop:12}}>
+                <Ring val={d.assessment.score} max={100} color={C.lavender} size={88}/>
+                <div>
+                  <TRow label="Avg Score"     val={`${d.assessment.score}/100`} accent={C.lavender}/>
+                  <TRow label="PT Passed"     val={`${d.assessment.passed}/${d.assessment.total}`} accent={C.teal}/>
+                  <TRow label="Pass Rate"     val={`${pct(d.assessment.passed,d.assessment.total)}%`} accent={C.lavender}/>
+                  <TRow label="Last Assessed" val={d.assessment.lastDate}/>
+                </div>
+                <div style={{padding:"14px",background:C.bg,borderRadius:12,textAlign:"center",border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:9,color:C.textDim,letterSpacing:2,marginBottom:8}}>STATUS</div>
+                  <div style={{fontSize:12,fontWeight:700,color:d.assessment.score>=85?C.teal:d.assessment.score>=70?C.gold:C.rose}}>
+                    {d.assessment.score>=85?"✓ Excellent":d.assessment.score>=70?"⚠ Needs Work":"✕ Below Standard"}
+                  </div>
+                </div>
+              </div>
+            </Card>
+            {isAll&&(
+              <Card>
+                <Lbl c="Conduct & AF Result — by Club"/>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
+                  {Object.entries(data.clubs).map(([name,cd])=>{
+                    const col=clubMeta[name]?.color||C.purple; const bc=bracketCfg[cd.conduct?.bracket||"B"];
+                    return(
+                      <div key={name} style={{background:C.bg,borderRadius:12,padding:"12px 14px",border:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:10,color:col,fontWeight:700,marginBottom:8}}>{name}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                          <div>
+                            <div style={{fontSize:9,color:C.textDim}}>Conduct</div>
+                            <div style={{fontSize:20,fontWeight:800,fontFamily:"'DM Mono',monospace",color:bc.color}}>{cd.conduct?.score}</div>
+                          </div>
+                          <div style={{width:36,height:36,borderRadius:8,background:bc.bg,border:`1.5px solid ${bc.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:bc.color,fontFamily:"'DM Mono',monospace"}}>{cd.conduct?.bracket}</div>
+                        </div>
+                        <div style={{fontSize:9,color:C.textDim,marginBottom:4}}>AF Result: <span style={{color:C.gold,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{cd.afResult?.sold}/{cd.afResult?.target}</span></div>
+                        <Bar val={cd.conduct?.score||0} max={100} color={bc.color} h={3}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ── AF RECOVERY ── */}
+        {tab==="recovery"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <Card glow={C.cyan}>
+              <Lbl c={`AF Recovery · ${isAll?"All 6 Clubs":club}`}/>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,margin:"12px 0"}}>
+                {[{l:"Sold",v:`${d.afRecovery.sold}`,c:C.cyan},{l:"Target",v:`${d.afRecovery.target}`,c:C.text},{l:"Revenue",v:fmtRp(d.afRecovery.revenue),c:C.purpleL}].map(k=>(
+                  <div key={k.l}><Lbl c={k.l}/><div style={{fontSize:26,fontWeight:800,fontFamily:"'DM Mono',monospace",color:k.c}}>{k.v}</div></div>
+                ))}
+              </div>
+              <Bar val={d.afRecovery.sold} max={d.afRecovery.target} color={C.cyan} h={8}/>
+              <div style={{fontSize:11,color:C.cyan,marginTop:8,fontFamily:"'DM Mono',monospace"}}>{pct(d.afRecovery.sold,d.afRecovery.target)}% of monthly target</div>
+            </Card>
+            <Card glow={C.purple}>
+              <Lbl c="Recovery Penetration Rate"/>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:24,alignItems:"center",margin:"12px 0"}}>
+                <Ring val={d.afRecovery.penetration} max={30} color={C.cyan} size={96}/>
+                <div>
+                  <div style={{fontSize:40,fontWeight:900,fontFamily:"'DM Mono',monospace",color:C.cyan,lineHeight:1}}>{d.afRecovery.penetration}%</div>
+                  <div style={{fontSize:10,color:C.textDim,margin:"4px 0 12px"}}>Target: 30% · member dengan AF Recovery</div>
+                  <Bar val={d.afRecovery.penetration} max={30} color={C.cyan} h={7}/>
+                  <div style={{fontSize:10,color:d.afRecovery.penetration>=30?C.teal:C.gold,marginTop:6,fontFamily:"'DM Mono',monospace"}}>
+                    {d.afRecovery.penetration>=30?"✓ Target achieved!":`${30-d.afRecovery.penetration}% gap to 30% target`}
+                  </div>
+                </div>
+              </div>
+            </Card>
+            {isAll&&(
+              <Card>
+                <Lbl c="AF Recovery — by Club"/>
+                <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:12}}>
+                  {Object.entries(data.clubs).sort((a,b)=>b[1].afRecovery.sold-a[1].afRecovery.sold).map(([name,cd])=>{
+                    const col=clubMeta[name]?.color||C.purple; const p=pct(cd.afRecovery?.sold||0,cd.afRecovery?.target||1);
+                    return(
+                      <div key={name}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                          <span style={{fontSize:12,fontWeight:600,color:col}}>{name}</span>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            <span style={{fontSize:12,fontFamily:"'DM Mono',monospace"}}>{cd.afRecovery?.sold}/{cd.afRecovery?.target} sold</span>
+                            <span style={{fontSize:11,color:C.textDim,fontFamily:"'DM Mono',monospace"}}>· {fmtRp(cd.afRecovery?.revenue||0)}</span>
+                            <Chip label={`${p}%`} color={p>=90?C.teal:p>=70?C.gold:C.rose}/>
+                          </div>
+                        </div>
+                        <Bar val={cd.afRecovery?.sold||0} max={cd.afRecovery?.target||1} color={col} h={5}/>
+                        <div style={{display:"flex",gap:4,marginTop:4,alignItems:"center"}}>
+                          <div style={{fontSize:9,color:C.textDim}}>Penetrasi:</div>
+                          <div style={{fontSize:9,fontWeight:700,color:C.cyan,fontFamily:"'DM Mono',monospace"}}>{cd.afRecovery?.penetration}%</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ── MEMBERS ── */}
+        {tab==="members"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <Card glow={C.teal}>
+              <Lbl c="PT Penetration Rate"/>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:24,alignItems:"center",margin:"12px 0"}}>
+                <Ring val={d.penetration.pct} max={40} color={C.teal} size={96}/>
+                <div>
+                  <div style={{fontSize:40,fontWeight:900,fontFamily:"'DM Mono',monospace",color:C.teal,lineHeight:1}}>{d.penetration.pct}%</div>
+                  <div style={{fontSize:10,color:C.textDim,margin:"4px 0 12px"}}>Target: 40% · {d.penetration.withPT} of {d.penetration.members} members</div>
+                  <Bar val={d.penetration.pct} max={40} color={C.teal} h={7}/>
+                  <div style={{fontSize:10,color:d.penetration.pct>=40?C.teal:C.gold,marginTop:6,fontFamily:"'DM Mono',monospace"}}>
+                    {d.penetration.pct>=40?"✓ Target achieved!":`Need ${40-d.penetration.pct}% more to hit target`}
+                  </div>
+                </div>
+              </div>
+            </Card>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <Card glow={C.rose}>
+                <Lbl c="New Members"/>
+                <Big c={C.rose}>{d.newRenewal.newM}</Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>Target: {d.newRenewal.tNew}</div>
+                <Bar val={d.newRenewal.newM} max={d.newRenewal.tNew} color={C.rose} h={6}/>
+                <div style={{fontSize:10,color:C.rose,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{pct(d.newRenewal.newM,d.newRenewal.tNew)}% achieved</div>
+              </Card>
+              <Card glow={C.purpleL}>
+                <Lbl c="Renewals"/>
+                <Big c={C.purpleL}>{d.newRenewal.renewals}</Big>
+                <div style={{fontSize:10,color:C.textDim,margin:"4px 0 10px"}}>Target: {d.newRenewal.tRenew}</div>
+                <Bar val={d.newRenewal.renewals} max={d.newRenewal.tRenew} color={C.purpleL} h={6}/>
+                <div style={{fontSize:10,color:C.purpleL,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{pct(d.newRenewal.renewals,d.newRenewal.tRenew)}% achieved</div>
+              </Card>
+            </div>
+            {isAll&&(
+              <>
+                <Card>
+                  <Lbl c="Penetration by Club"/>
+                  <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:12}}>
+                    {Object.entries(data.clubs).sort((a,b)=>b[1].penetration.pct-a[1].penetration.pct).map(([name,cd])=>{
+                      const col=clubMeta[name]?.color||C.purple;
+                      return(
+                        <div key={name}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                            <span style={{fontSize:12,fontWeight:600,color:col}}>{name}</span>
+                            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                              <span style={{fontSize:11,color:C.textDim,fontFamily:"'DM Mono',monospace"}}>{cd.penetration?.withPT}/{cd.penetration?.members}</span>
+                              <Chip label={`${cd.penetration?.pct}%`} color={(cd.penetration?.pct||0)>=40?C.teal:C.gold}/>
+                            </div>
+                          </div>
+                          <Bar val={cd.penetration?.pct||0} max={40} color={col} h={5}/>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+                <Card>
+                  <Lbl c="New & Renewal by Club"/>
+                  <div style={{marginTop:12,display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                    {Object.entries(data.clubs).map(([name,cd])=>{
+                      const col=clubMeta[name]?.color||C.purple;
+                      return(
+                        <div key={name} style={{background:C.bg,borderRadius:12,padding:"12px 14px",border:`1px solid ${C.border}`}}>
+                          <div style={{fontSize:10,color:col,fontWeight:700,marginBottom:8}}>{name}</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <div>
+                              <div style={{fontSize:8,color:C.textDim,letterSpacing:1}}>NEW</div>
+                              <div style={{fontSize:18,fontWeight:800,fontFamily:"'DM Mono',monospace",color:C.rose}}>{cd.newRenewal?.newM}</div>
+                              <Bar val={cd.newRenewal?.newM||0} max={cd.newRenewal?.tNew||1} color={C.rose} h={3}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:8,color:C.textDim,letterSpacing:1}}>RENEWAL</div>
+                              <div style={{fontSize:18,fontWeight:800,fontFamily:"'DM Mono',monospace",color:C.purpleL}}>{cd.newRenewal?.renewals}</div>
+                              <Bar val={cd.newRenewal?.renewals||0} max={cd.newRenewal?.tRenew||1} color={C.purpleL} h={3}/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{borderTop:`1px solid ${C.border}`,padding:"14px 20px",position:"relative",zIndex:1}}>
+        <div style={{maxWidth:980,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:9,color:C.textDim,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>AF PERFORMANCE HUB · v2.0</span>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{width:6,height:6,borderRadius:99,background:source==="live"?C.teal:C.gold}}/>
+            <span style={{fontSize:9,color:source==="live"?C.teal:C.gold,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>
+              {source==="live"?"LIVE · Google Sheets":"DEMO DATA · Setup Google Sheets untuk live data"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>
