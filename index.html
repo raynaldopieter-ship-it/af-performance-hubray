@@ -16,9 +16,8 @@ const { useState, useEffect, useCallback } = React;
 
 // ================================================================
 // ⚙️  KONFIGURASI — ganti URL ini setelah deploy Apps Script
-    
 // ================================================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycby0cq-lYFed_cPczOeAGwhzfXyO_JfiBT0aaKbHVnAR6MeAYJsLGfCYQA80EBk0LVO3Lg/exec/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvlq09p3YDF7ze8bS-rW0-7Rt8J8DMOV29dFPUU35swTUstXjMn_iclZehky21M1cPTA/exec";
 // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────────
@@ -175,22 +174,37 @@ function App() {
 
   useEffect(()=>{const t=setTimeout(()=>setMounted(true),50);return()=>clearTimeout(t);},[]);
 
-  const fetchFromSheets = useCallback(async()=>{
-    if (APPS_SCRIPT_URL === "YOUR_APPS_SCRIPT_URL_HERE") return;
+  const fetchFromSheets = useCallback(()=>{
     setLoading(true);
-    try {
-      const res  = await fetch(`${APPS_SCRIPT_URL}?action=all`);
-      const json = await res.json();
-      if (json.clubs && json.agg) {
-        setData(json);
-        setSource("live");
-        setLastSync(new Date().toLocaleTimeString("id-ID"));
-      }
-    } catch(e) {
-      console.error("Sheets fetch failed, using demo data", e);
-    } finally {
+    const callbackName = "afCb_" + Date.now();
+    const script = document.createElement("script");
+    script.src = APPS_SCRIPT_URL + "?action=all&callback=" + callbackName;
+    window[callbackName] = (json) => {
+      try {
+        if (json && json.clubs) {
+          // Merge with dummy for zero values, but mark as LIVE
+          setData(json);
+          setSource("live");
+          setLastSync(new Date().toLocaleTimeString("id-ID"));
+        }
+      } catch(e) { console.error(e); }
       setLoading(false);
-    }
+      delete window[callbackName];
+      if (document.body.contains(script)) document.body.removeChild(script);
+    };
+    script.onerror = () => {
+      setLoading(false);
+      delete window[callbackName];
+      if (document.body.contains(script)) document.body.removeChild(script);
+    };
+    setTimeout(() => {
+      if (window[callbackName]) {
+        setLoading(false);
+        delete window[callbackName];
+        if (document.body.contains(script)) document.body.removeChild(script);
+      }
+    }, 10000);
+    document.body.appendChild(script);
   }, []);
 
   // Auto-fetch on load + every 5 minutes
