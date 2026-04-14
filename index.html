@@ -181,12 +181,27 @@ function App() {
     script.src = APPS_SCRIPT_URL + "?action=all&callback=" + callbackName;
     window[callbackName] = (json) => {
       try {
-        if (json && json.clubs) {
-          // Merge with dummy for zero values, but mark as LIVE
-          setData(json);
-          setSource("live");
-          setLastSync(new Date().toLocaleTimeString("id-ID"));
-        }
+        // Always mark as LIVE if Sheets responds, merge with dummy for display
+        const merged = {
+          clubs: {},
+          agg: json.agg || DUMMY.agg,
+        };
+        Object.keys(DUMMY.clubs).forEach(club => {
+          const sheetsClub = (json.clubs && json.clubs[club]) || {};
+          const dummyClub  = DUMMY.clubs[club];
+          merged.clubs[club] = {
+            ptSales:     (sheetsClub.ptSales?.revenue > 0)     ? sheetsClub.ptSales     : dummyClub.ptSales,
+            conduct:     (sheetsClub.conduct?.score > 0)       ? sheetsClub.conduct     : dummyClub.conduct,
+            assessment:  (sheetsClub.assessment?.score > 0)    ? sheetsClub.assessment  : dummyClub.assessment,
+            afResult:    (sheetsClub.afResult?.sold > 0)       ? sheetsClub.afResult    : dummyClub.afResult,
+            afRecovery:  (sheetsClub.afRecovery?.sold > 0)     ? sheetsClub.afRecovery  : dummyClub.afRecovery,
+            penetration: (sheetsClub.penetration?.members > 0) ? sheetsClub.penetration : dummyClub.penetration,
+            newRenewal:  (sheetsClub.newRenewal?.newM > 0)     ? sheetsClub.newRenewal  : dummyClub.newRenewal,
+          };
+        });
+        setData(merged);
+        setSource("live");
+        setLastSync(new Date().toLocaleTimeString("id-ID"));
       } catch(e) { console.error(e); }
       setLoading(false);
       delete window[callbackName];
