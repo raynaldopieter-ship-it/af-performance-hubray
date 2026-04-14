@@ -174,55 +174,98 @@ function App() {
 
   useEffect(()=>{const t=setTimeout(()=>setMounted(true),50);return()=>clearTimeout(t);},[]);
 
-  const fetchFromSheets = useCallback(()=>{
+  const SHEET_ID = "1gJeaXraHE3QNqmioNdN7tqEYWI7kIZkeDUpVJltLxvE";
+  const csvUrl = (sheet) => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheet}`;
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.replace(/"/g,"").trim());
+    return lines.slice(1).map(line => {
+      const vals = line.match(/(".*?"|[^,]+)(?=,|$)/g) || [];
+      const obj = {};
+      headers.forEach((h,i) => { obj[h] = (vals[i]||"").replace(/"/g,"").trim(); });
+      return obj;
+    });
+  };
+
+  const fetchFromSheets = useCallback(async () => {
     setLoading(true);
-    const callbackName = "afCb_" + Date.now();
-    const script = document.createElement("script");
-    script.src = APPS_SCRIPT_URL + "?action=all&callback=" + callbackName;
-    window[callbackName] = (json) => {
-      try {
-        // Always mark as LIVE if Sheets responds, merge with dummy for display
-        const merged = {
-          clubs: {},
-          agg: json.agg || DUMMY.agg,
+    try {
+      const month = "2026-04";
+      const sheets = ["PT_Sales","Conduct","Assessment","AF_Result","AF_Recovery","Penetration","New_Renewal","Targets"];
+      const results = await Promise.all(sheets.map(s => fetch(csvUrl(s)).then(r => r.text()).then(parseCSV).catch(()=>[])));
+      const [ptSalesRows, conductRows, assessRows, afResultRows, afRecoveryRows, penRows, nrRows, targetRows] = results;
+
+      const clubs = {};
+      const CLUB_LIST = ["Cikini","MOI","Simatupang","Taman Anggrek","LWGW","Alam Sutera"];
+
+      CLUB_LIST.forEach(club => {
+        const filterClub = (rows) => rows.filter(r => r.Club === club && r.Month === month);
+
+        // PT Sales
+        const ptRows = filterClub(ptSalesRows);
+        const pts = ptRows.map(r => ({ name: r.PT_Name, revenue: Number(r.Revenue)||0, sessions: Number(r.Sessions)||0 }));
+        const ptRevenue = pts.reduce((s,p) => s+p.revenue, 0);
+        const ptSessions = pts.reduce((s,p) => s+p.sessions, 0);
+        const tgt = targetRows.find(r => r.Club===club && r.Month===month);
+
+        // Conduct
+        const cRow = filterClub(conductRows)[0] || {};
+        // Assessment
+        const aRow = filterClub(assessRows)[0] || {};
+        // AF Result
+        const afRRow = filterClub(afResultRows)[0] || {};
+        // AF Recovery
+        const afRecRow = filterClub(afRecoveryRows)[0] || {};
+        // Penetration
+        const penRow = filterClub(penRows)[0] || {};
+        const members = Number(penRow.Total_Members)||0;
+        const withPT  = Number(penRow.Members_With_PT)||0;
+        // New Renewal
+        const nrRow = filterClub(nrRows)[0] || {};
+
+        clubs[club] = {
+          ptSales:    { revenue: ptRevenue, sessions: ptSessions, target: Number(tgt?.PT_Sales_Target)||0, pts },
+          conduct:    { score: Number(cRow.Score)||0, bracket: cRow.Bracket||"D", violations: Number(cRow.Violations)||0 },
+          assessment: { score: Number(aRow.Score)||0, passed: Number(aRow.Passed)||0, total: Number(aRow.Total_PT)||0, lastDate: aRow.Last_Date||"" },
+          afResult:   { sold: Number(afRRow.Sold)||0, target: Number(afRRow.Target)||0, revenue: Number(afRRow.Revenue)||0 },
+          afRecovery: { sold: Number(afRecRow.Sold)||0, target: Number(afRecRow.Target)||0, revenue: Number(afRecRow.Revenue)||0, penetration: Number(afRecRow.Penetration)||0 },
+          penetration:{ pct: members>0?Math.round((withPT/members)*100):0, members, withPT },
+          newRenewal: { newM: Number(nrRow.New_Members)||0, renewals: Number(nrRow.Renewals)||0, tNew: Number(nrRow.Target_New)||0, tRenew: Number(nrRow.Target_Renewals)||0 },
         };
-        Object.keys(DUMMY.clubs).forEach(club => {
-          const sheetsClub = (json.clubs && json.clubs[club]) || {};
-          const dummyClub  = DUMMY.clubs[club];
-          merged.clubs[club] = {
-            ptSales:     (sheetsClub.ptSales?.revenue > 0)     ? sheetsClub.ptSales     : dummyClub.ptSales,
-            conduct:     (sheetsClub.conduct?.score > 0)       ? sheetsClub.conduct     : dummyClub.conduct,
-            assessment:  (sheetsClub.assessment?.score > 0)    ? sheetsClub.assessment  : dummyClub.assessment,
-            afResult:    (sheetsClub.afResult?.sold > 0)       ? sheetsClub.afResult    : dummyClub.afResult,
-            afRecovery:  (sheetsClub.afRecovery?.sold > 0)     ? sheetsClub.afRecovery  : dummyClub.afRecovery,
-            penetration: (sheetsClub.penetration?.members > 0) ? sheetsClub.penetration : dummyClub.penetration,
-            newRenewal:  (sheetsClub.newRenewal?.newM > 0)     ? sheetsClub.newRenewal  : dummyClub.newRenewal,
-          };
-        });
-        setData(merged);
-        setSource("live");
-        setLastSync(new Date().toLocaleTimeString("id-ID"));
-      } catch(e) { console.error(e); }
+      });
+
+      // Check if any real data exists
+      const hasData = CLUB_LIST.some(c => clubs[c].ptSales.revenue > 0 || clubs[c].conduct.score > 0);
+
+      // Build merged data - use sheets data if available, else dummy
+      const merged = { clubs: {}, agg: null };
+      CLUB_LIST.forEach(club => {
+        const sc = clubs[club];
+        const dc = DUMMY.clubs[club];
+        merged.clubs[club] = {
+          ptSales:     sc.ptSales.revenue>0     ? sc.ptSales     : dc.ptSales,
+          conduct:     sc.conduct.score>0       ? sc.conduct     : dc.conduct,
+          assessment:  sc.assessment.score>0    ? sc.assessment  : dc.assessment,
+          afResult:    sc.afResult.sold>0       ? sc.afResult    : dc.afResult,
+          afRecovery:  sc.afRecovery.sold>0     ? sc.afRecovery  : dc.afRecovery,
+          penetration: sc.penetration.members>0 ? sc.penetration : dc.penetration,
+          newRenewal:  sc.newRenewal.newM>0     ? sc.newRenewal  : dc.newRenewal,
+        };
+      });
+      merged.agg = buildAgg(merged.clubs);
+
+      setData(merged);
+      setSource("live");
+      setLastSync(new Date().toLocaleTimeString("id-ID"));
+    } catch(e) {
+      console.error("CSV fetch failed:", e);
+    } finally {
       setLoading(false);
-      delete window[callbackName];
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
-    script.onerror = () => {
-      setLoading(false);
-      delete window[callbackName];
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
-    setTimeout(() => {
-      if (window[callbackName]) {
-        setLoading(false);
-        delete window[callbackName];
-        if (document.body.contains(script)) document.body.removeChild(script);
-      }
-    }, 10000);
-    document.body.appendChild(script);
+    }
   }, []);
 
-  // Auto-fetch on load + every 5 minutes
   useEffect(()=>{
     fetchFromSheets();
     const interval = setInterval(fetchFromSheets, 5*60*1000);
